@@ -238,5 +238,5 @@ Firstly, all changes written to journal first. Then COMMIT marker indicates tran
 
 ```
 ---
-
+![metadata journaling](metadata_journaling_image.png)
 
