@@ -213,11 +213,14 @@ Firstly, all changes written to journal first. Then COMMIT marker indicates tran
 
 ---
 ---
-#Before running the following commands you need to compile the file first:
+#Before running the following commands you need to compile the files first:
 ---
-gcc -o mkfs mkfs.c
+gcc -o mkfs mkfs.c  
+
 gcc -o validator validator.c
+
 gcc -o corrupt corrupt.c
+
 gcc -o journal journal.c
 
 ---
