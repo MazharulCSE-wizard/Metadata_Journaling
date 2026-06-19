@@ -107,13 +107,13 @@ Simulates filesystem corruption for testing validation and recovery mechanisms.
   3. Reports discrepancies: "link count X disagrees with directory refs Y"
 
  **Error Reporting**:
-  - Uses a variable-argument error function to report all issues
-  - Counts total inconsistencies found
-  - Returns 0 if filesystem is consistent, 1 if errors exist
+  1. Uses a variable-argument error function to report all issues
+  2. Counts total inconsistencies found
+  3. Returns 0 if filesystem is consistent, 1 if errors exist
 
 **Example Detection**:
 If corrupt.c sets inode bitmap bit 1 but inode 1 has type=0:
-- Validator detects: "inode 1 allocation mismatch (inode vs bitmap)"
+ Validator detects: "inode 1 allocation mismatch (inode vs bitmap)"
 
 ### 4. **journal.c** - Metadata Journaling System
 
