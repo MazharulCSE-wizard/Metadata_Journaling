@@ -210,6 +210,7 @@ File system will crash because of the inconsistent metadata. Morever, validator 
 
 **With Journaling:**
 Firstly, all changes written to journal first. Then COMMIT marker indicates transaction is complete. On recovery, validator can replay uncommitted transactions ensuring metadata never enters half-written state.
+
 ---
 ## Usage Example
 
