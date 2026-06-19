@@ -11,69 +11,65 @@ The system consists of four main components that work together:
 3. **validator.c** - Checks filesystem consistency and validates metadata
 4. **journal.c** - Implements metadata journaling for crash recovery
 
----
 
-## Module Descriptions
+### 1. **mkfs.c** - Filesystem Creation:
 
-### 1. **mkfs.c** - Filesystem Creation
+ Creates a virtual filesystem image with proper structure and metadata initialization.
 
-**Purpose:** Creates a virtual filesystem image with proper structure and metadata initialization.
+#The following key mechanisms have been implemented in mkfs.c file:# 
 
-**Key Mechanisms:**
+ **Superblock Creation**: Writes a 128-byte superblock containing:
+  1. Magic number (FS_MAGIC = 0x56534653)
+  2. Block size (4096 bytes)
+  3. Total blocks, inode count, and layout information
+  4. Pointers to bitmap and inode table locations
 
-- **Superblock Creation**: Writes a 128-byte superblock containing:
-  - Magic number (FS_MAGIC = 0x56534653)
-  - Block size (4096 bytes)
-  - Total blocks, inode count, and layout information
-  - Pointers to bitmap and inode table locations
+ **Block Layout**:
+  1. Block 0: Superblock
+  2. Blocks 1-16: Journal area (for crash recovery)
+  3. Block 17: Inode bitmap (tracks which inodes are in use)
+  4. Block 18: Data bitmap (tracks which data blocks are in use)
+  5. Blocks 19-20: Inode table (stores inode metadata)
+  6. Blocks 21-84: Data area (file and directory content)
 
-- **Block Layout**:
-  - Block 0: Superblock
-  - Blocks 1-16: Journal area (for crash recovery)
-  - Block 17: Inode bitmap (tracks which inodes are in use)
-  - Block 18: Data bitmap (tracks which data blocks are in use)
-  - Blocks 19-20: Inode table (stores inode metadata)
-  - Blocks 21-84: Data area (file and directory content)
+ **Inode Structure** (128 bytes each):
+  1. Type: 0=free, 1=file, 2=directory
+  2. Links: Link count for reference tracking
+  3. Size: File/directory size in bytes
+  4. Direct[8]: 8 direct block pointers for file data
+  5. Timestamps: Creation and modification times
 
-- **Inode Structure** (128 bytes each):
-  - Type: 0=free, 1=file, 2=directory
-  - Links: Link count for reference tracking
-  - Size: File/directory size in bytes
-  - Direct[8]: 8 direct block pointers for file data
-  - Timestamps: Creation and modification times
+ **Directory Entries** (32 bytes each):
+  1. Inode number
+  2. Filename (up to 27 characters)
 
-- **Directory Entries** (32 bytes each):
-  - Inode number
-  - Filename (up to 27 characters)
+ **Root Directory Initialization**:
+  1. Creates root inode (inode 0) as a directory
+  2. Marks inode 0 and data block 0 as reserved
+  3. Adds "." and ".." entries in root directory
 
-- **Root Directory Initialization**:
-  - Creates root inode (inode 0) as a directory
-  - Marks inode 0 and data block 0 as reserved
-  - Adds "." and ".." entries in root directory
+### 2. **corrupt.c** - Corruption Simulator:
 
-### 2. **corrupt.c** - Corruption Simulator
+Simulates filesystem corruption for testing validation and recovery mechanisms.
 
-**Purpose:** Simulates filesystem corruption for testing validation and recovery mechanisms.
+**The following key mechanisms have been implemented in mkfs.c file:**
 
-**Key Mechanisms:**
+  1. Opens the vsfs.img file in read+write mode
+  2. Reads the inode bitmap from block 17
+  3. Sets bit 1 in the bitmap to mark inode 1 as "IN USE"
+  4. Writes the corrupted bitmap back to disk
+  5. Does NOT update the actual inode table or directory entries
 
-- **Targeted Corruption**:
-  - Opens the vsfs.img file in read+write mode
-  - Reads the inode bitmap from block 17
-  - Sets bit 1 in the bitmap to mark inode 1 as "IN USE"
-  - Writes the corrupted bitmap back to disk
-  - Does NOT update the actual inode table or directory entries
+**Corruption Pattern Created**:
+  1. Inode bitmap says: "inode 1 is ALLOCATED"
+  2. Inode table says: "inode 1 is FREE" (type = 0)
+  3. No directory entry points to inode 1
+  4. Creates an orphaned inode allocation which is a classic filesystem inconsistency
 
-- **Corruption Pattern Created**:
-  - Inode bitmap says: "inode 1 is ALLOCATED"
-  - Inode table says: "inode 1 is FREE" (type = 0)
-  - No directory entry points to inode 1
-  - Creates an **orphaned inode allocation** - a classic filesystem inconsistency
-
-- **Simulated Crash Scenario**:
-  - Mimics a system crash after updating the bitmap
-  - Before changes could be fully propagated to the inode table
-  - Tests the validator's ability to detect such inconsistencies
+ **Simulated Crash Scenario**:
+  1. Mimics a system crash after updating the bitmap
+  2. Before changes could be fully propagated to the inode table
+  3. Tests the validator's ability to detect such inconsistencies
 
 ### 3. **validator.c** - Filesystem Consistency Checker
 
