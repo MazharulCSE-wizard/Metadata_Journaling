@@ -16,7 +16,7 @@ The system consists of four main components that work together:
 
  Creates a virtual filesystem image with proper structure and metadata initialization.
 
-#The following key mechanisms have been implemented in mkfs.c file:# 
+**The following key mechanisms have been implemented in mkfs.c file:** 
 
  **Superblock Creation**: Writes a 128-byte superblock containing:
   1. Magic number (FS_MAGIC = 0x56534653)
@@ -52,7 +52,7 @@ The system consists of four main components that work together:
 
 Simulates filesystem corruption for testing validation and recovery mechanisms.
 
-**The following key mechanisms have been implemented in mkfs.c file:**
+**The following key mechanisms have been implemented in corrupt.c file:**
 
   1. Opens the vsfs.img file in read+write mode
   2. Reads the inode bitmap from block 17
@@ -73,40 +73,40 @@ Simulates filesystem corruption for testing validation and recovery mechanisms.
 
 ### 3. **validator.c** - Filesystem Consistency Checker
 
-**Purpose:** Validates filesystem metadata to detect and report inconsistencies.
+ Validates filesystem metadata to detect and report inconsistencies.
 
-**Key Mechanisms:**
+**The following key mechanisms have been implemented in validator.c file:**
 
-- **Superblock Validation**:
-  - Verifies magic number matches FS_MAGIC
-  - Checks block size, total blocks, and inode count
-  - Validates bitmap and inode table locations
+ **Superblock Validation**:
+  1. Verifies magic number matches FS_MAGIC
+  2. Checks block size, total blocks, and inode count
+  3. Validates bitmap and inode table locations
 
-- **Bitmap Consistency Checks**:
-  - Compares inode bitmap against actual inode states (type != 0 means allocated)
-  - Reports mismatches: "inode X allocation mismatch (inode vs bitmap)"
-  - Verifies data bitmap matches inode data block references
-  - Checks for stray bits set beyond valid ranges
+ **Bitmap Consistency Checks**:
+  1. Compares inode bitmap against actual inode states (type != 0 means allocated)
+  2. Reports mismatches: "inode X allocation mismatch (inode vs bitmap)"
+  3. Verifies data bitmap matches inode data block references
+  4. Checks for stray bits set beyond valid ranges
 
-- **Inode Validation**:
-  - Verifies inode type is valid (0, 1, or 2)
-  - Checks size consistency with allocated data blocks
-  - Validates block pointers are within data region
-  - Detects multiple inodes claiming same data block
+ **Inode Validation**:
+  1. Verifies inode type is valid (0, 1, or 2)
+  2. Checks size consistency with allocated data blocks
+  3. Validates block pointers are within data region
+  4. Detects multiple inodes claiming same data block
 
-- **Directory Structure Validation**:
-  - Verifies directory size is aligned to directory entry size
-  - Checks all directory entries point to valid inodes
-  - Ensures directories have "." and ".." entries
-  - Validates entry names are null-terminated
-  - Builds link reference counts from directory entries
+ **Directory Structure Validation**:
+  1. Verifies directory size is aligned to directory entry size
+  2. Checks all directory entries point to valid inodes
+  3. Ensures directories have "." and ".." entries
+  4. Validates entry names are null-terminated
+  5. Builds link reference counts from directory entries
 
-- **Link Count Verification**:
-  - Tracks how many directory entries reference each inode
-  - Compares against inode->links field
-  - Reports discrepancies: "link count X disagrees with directory refs Y"
+ **Link Count Verification**:
+  1. Tracks how many directory entries reference each inode
+  2. Compares against inode->links field
+  3. Reports discrepancies: "link count X disagrees with directory refs Y"
 
-- **Error Reporting**:
+ **Error Reporting**:
   - Uses a variable-argument error function to report all issues
   - Counts total inconsistencies found
   - Returns 0 if filesystem is consistent, 1 if errors exist
@@ -117,9 +117,9 @@ If corrupt.c sets inode bitmap bit 1 but inode 1 has type=0:
 
 ### 4. **journal.c** - Metadata Journaling System
 
-**Purpose:** Implements a write-ahead journal to ensure crash recovery and maintain consistency.
+ Implements a write-ahead journal to ensure crash recovery and maintain consistency.
 
-**Key Mechanisms:**
+**The following key mechanisms have been implemented in journal.c file:**
 
 #### **Journal Header** (at block 1):
 ```c
@@ -131,61 +131,61 @@ struct journal_header {
 Tracks what's currently in the journal.
 
 #### **Record Format**:
-- **Record Header**: Type (DATA=1 or COMMIT=2) and size
-- **Data Record**: Contains block_no + full 4096-byte block content
-- **Commit Record**: Signals end of transaction
+1. **Record Header**: Type (DATA=1 or COMMIT=2) and size
+2. **Data Record**: Contains block_no + full 4096-byte block content
+3. **Commit Record**: Signals end of transaction
 
 #### **Transaction Workflow** (`create` command):
 
 1. **Phase 1: Read Current State**
-   - Read journal header to see what's already logged
-   - Find a free inode from the inode bitmap
-   - Find a free directory entry in the root directory
+   i. Read journal header to see what's already logged
+   ii. Find a free inode from the inode bitmap
+   iii. Find a free directory entry in the root directory
 
 2. **Phase 2: Prepare Changes in Memory**
-   - Mark the inode as used in bitmap
-   - Create new inode with type=1 (file), size=0
-   - Add directory entry linking filename to inode number
-   - Update root directory size if needed
-   - All changes kept in memory (not written yet)
+   i. Mark the inode as used in bitmap
+   ii. Create new inode with type=1 (file), size=0
+   iii. Add directory entry linking filename to inode number
+   iv. Update root directory size if needed
+   v. All changes kept in memory (not written yet)
 
 3. **Phase 3: Write Records to Journal** (Crash-safe)
-   - Record 1: Write updated inode bitmap
-   - Record 2: Write updated inode table
-   - Record 3: Write updated directory block
-   - Record 4: Write COMMIT marker
-   - Update journal header with new size
+   i. Record 1: Write updated inode bitmap
+   ii. Record 2: Write updated inode table
+   iii. Record 3: Write updated directory block
+   iv. Record 4: Write COMMIT marker
+   v. Update journal header with new size
 
 4. **Key Safety Feature**:
-   - Changes are ONLY in the journal until COMMIT is written
-   - If crash occurs before COMMIT, changes are ignored during recovery
-   - If crash occurs after COMMIT, changes are recovered
+   i. Changes are ONLY in the journal until COMMIT is written
+   ii. If crash occurs before COMMIT, changes are ignored during recovery
+   iii. If crash occurs after COMMIT, changes are recovered
 
 #### **Recovery Workflow** (`install` command):
 
-1. **Read Journal Header**
-   - Check if journal contains valid data (magic + size > header)
+1. **Read Journal Header:**
+    Check if journal contains valid data (magic + size > header)
 
 2. **Scan Records Until COMMIT**
-   - Read each record sequentially
-   - Store DATA records in memory (up to 10 pending updates)
-   - Stop when COMMIT record is found
+   i. Read each record sequentially
+   ii. Store DATA records in memory (up to 10 pending updates)
+   iii. Stop when COMMIT record is found
 
 3. **Write Changes to "Home" Locations**
-   - Once COMMIT found, copy all pending DATA records from journal to actual blocks
-   - Write inode bitmap to block 17
-   - Write inode table to block 19
-   - Write directory to block 21
+   i. Once COMMIT found, copy all pending DATA records from journal to actual blocks
+   ii. Write inode bitmap to block 17
+   iii. Write inode table to block 19
+   iv. Write directory to block 21
 
 4. **Clear the Journal**
-   - Reset journal header nbytes_used to header size
-   - Makes journal empty for next transaction
+   i. Reset journal header nbytes_used to header size
+   ii. Makes journal empty for next transaction
 
 **Safety Guarantees**:
-- **Atomicity**: Either all changes apply or none (no partial updates)
-- **Durability**: Once COMMIT is written, data survives crashes
-- **Consistency**: Journal ensures metadata stays consistent across crashes
-- **Recovery**: On next mount, `install` command replays pending transactions
+1. **Atomicity**: Either all changes apply or none (no partial updates)
+2. **Durability**: Once COMMIT is written, data survives crashes
+3. **Consistency**: Journal ensures metadata stays consistent across crashes
+4. **Recovery**: On next mount, `install` command replays pending transactions
 
 ---
 
@@ -206,18 +206,11 @@ Total: 85 blocks (≈348 KB)
 ## How Journaling Ensures Consistency
 
 **Without Journaling:**
-- Crash during write → Inconsistent metadata
-- Bitmap says inode is used, but inode table says it's free
-- Validator detects errors but cannot fix them
+File system will crash because of the inconsistent metadata. Morever, validator will return errors and will show the inconsistency of the metadata.
 
 **With Journaling:**
-- All changes written to journal first
-- COMMIT marker indicates transaction is complete
-- On recovery, validator can replay uncommitted transactions
-- Ensures metadata never enters half-written state
-
+Firstly, all changes written to journal first. Then COMMIT marker indicates transaction is complete. On recovery, validator can replay uncommitted transactions ensuring metadata never enters half-written state.
 ---
-
 ## Usage Example
 
 ```bash
@@ -243,12 +236,4 @@ Total: 85 blocks (≈348 KB)
 
 ---
 
-## Key Concepts
-
-- **Metadata**: Information about files (inodes, bitmaps, directories)
-- **Journaling**: Write-ahead log technique for crash recovery
-- **Atomicity**: Operations either fully succeed or fully fail
-- **Consistency**: Metadata relationships always remain valid
-- **Crash Recovery**: System can recover from power loss/crashes
-- **Bitmap**: Compact representation of which inodes/blocks are in use
 
