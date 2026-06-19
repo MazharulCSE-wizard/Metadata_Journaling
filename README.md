@@ -217,23 +217,26 @@ Firstly, all changes written to journal first. Then COMMIT marker indicates tran
 # 1. Create the filesystem
 ./mkfs vsfs.img
 
-# 2. Create a file (logs to journal)
-./journal create myfile.txt
+# 2. Validate filesystem consistency
+./validator vsfs.img
 
-# 3. In production, this would survive crashes:
+# 3. Create a file (logs to journal)
+./journal create dummy.txt
+
+# In production, this would survive crashes:
 # If crash happens here, changes are in journal but not installed
+
+# 4. simulate corruption for testing
+./corrupt
+./validator vsfs.img  # Now reports inconsistencies
 
 # 4. Recover and apply changes from journal
 ./journal install
 
 # 5. Validate filesystem consistency
-./validator vsfs.img
+./validator vsfs.img    #now it will return filesystem is consistent
 
-# 6. Optionally, simulate corruption for testing
-./corrupt
-./validator vsfs.img  # Now reports inconsistencies
 ```
-
 ---
 
 
